@@ -1,0 +1,163 @@
+{
+	"compiler": {
+		"version": "0.8.26+commit.8a97fa7a"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "DSCEngine_InvalidAddress",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "DSCEngine_InvalidAmount",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "burnDsc",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_tokenCollateralAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_amountCollateral",
+						"type": "uint256"
+					}
+				],
+				"name": "depositCollateral",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "tokenCollateralAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountCollateral",
+						"type": "uint256"
+					}
+				],
+				"name": "depositCollateralAndMintDsc",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getHealthFactor",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "liquidate",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "mintDsc",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "redeemCollateral",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "redeemCollateralForDsc",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"depositCollateralAndMintDsc(address,uint256)": {
+					"params": {
+						"amountCollateral": "抵押品数量",
+						"tokenCollateralAddress": "抵押品地址"
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"src/DSCEngine.sol": "DSCEngine"
+		},
+		"evmVersion": "cancun",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"forge-std/Vm.sol": {
+			"keccak256": "0xbed7e29b63ea925a59762400e383856c62184e00123a7b90937423c143abc02f",
+			"license": "Unlicense",
+			"urls": [
+				"bzz-raw://9f41c29f491626269bd31692f24ed1fb15e9a81b31141c19595dfc41bd71edf0",
+				"dweb:/ipfs/QmRHwpxs4RoMEyLwQDzQQMFjEDNfCDWp1VhtVsKLsXUFYM"
+			]
+		},
+		"src/DSCEngine.sol": {
+			"keccak256": "0xb5ec7907b1d8ffb723dbe3a4630248de948b686bd7186933d69b0c0726fb008f",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://711596425e01dbd00d16f82d087ac35b9a56fff10637081196160eb607feb755",
+				"dweb:/ipfs/QmNzYuQPMEyhqwzgKbShWZ83dWvZ7zvLR7dNUZCFp3zFso"
+			]
+		},
+		"src/interface/IDSCEngine.sol": {
+			"keccak256": "0x66dfb80ae4ced316875b764dc7d1c242a0568e5ba3d30bb608aee03b48d52327",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://a8ed5bcf758de37d6c3d359a6ffbadcf85fc555417b8e97d78464257479c6521",
+				"dweb:/ipfs/QmQcVDRDy4YD56xb5hUeeVEH5xcBTrdAzmQnKGEprsmEde"
+			]
+		}
+	},
+	"version": 1
+}

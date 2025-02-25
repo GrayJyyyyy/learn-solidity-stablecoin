@@ -1,0 +1,158 @@
+{
+	"deploy": {
+		"VM:-": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"main:1": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"ropsten:3": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"rinkeby:4": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"kovan:42": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"goerli:5": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"Custom": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		}
+	},
+	"data": {
+		"bytecode": {
+			"functionDebugData": {},
+			"generatedSources": [],
+			"linkReferences": {},
+			"object": "",
+			"opcodes": "",
+			"sourceMap": ""
+		},
+		"deployedBytecode": {
+			"functionDebugData": {},
+			"generatedSources": [],
+			"immutableReferences": {},
+			"linkReferences": {},
+			"object": "",
+			"opcodes": "",
+			"sourceMap": ""
+		},
+		"gasEstimates": null,
+		"methodIdentifiers": {
+			"burnDsc()": "ffde1fba",
+			"depositCollateral(address,uint256)": "a5d5db0c",
+			"depositCollateralAndMintDsc(address,uint256)": "50328a60",
+			"getHealthFactor()": "a5f352b7",
+			"liquidate()": "28a07025",
+			"mintDsc()": "ca5ba61f",
+			"redeemCollateral()": "a6534470",
+			"redeemCollateralForDsc()": "9e297554"
+		}
+	},
+	"abi": [
+		{
+			"inputs": [],
+			"name": "DSCEngine_InvalidAddress",
+			"type": "error"
+		},
+		{
+			"inputs": [],
+			"name": "DSCEngine_InvalidAmount",
+			"type": "error"
+		},
+		{
+			"inputs": [],
+			"name": "burnDsc",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "_tokenCollateralAddress",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "_amountCollateral",
+					"type": "uint256"
+				}
+			],
+			"name": "depositCollateral",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "tokenCollateralAddress",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "amountCollateral",
+					"type": "uint256"
+				}
+			],
+			"name": "depositCollateralAndMintDsc",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "getHealthFactor",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "liquidate",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "mintDsc",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "redeemCollateral",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "redeemCollateralForDsc",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	]
+}
