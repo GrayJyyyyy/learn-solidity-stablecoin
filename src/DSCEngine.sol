@@ -10,11 +10,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-// import {HelperConfig} from "../../script/HelperConfig.s.sol";
-
 abstract contract DSCEngine is IDSCEngine, ReentrancyGuard {
-    // HelperConfig public helperConfig;
-
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
     uint256 private constant PRECISION = 1e18;
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200%超额抵押
@@ -133,6 +129,12 @@ abstract contract DSCEngine is IDSCEngine, ReentrancyGuard {
 
     function mintDsc(uint256 _amountDesToMint) external validAmount(_amountDesToMint) nonReentrant {
         s_dscMinted[msg.sender] += _amountDesToMint;
+        // 保证200%超额抵押率
+        _revertIfHealthFactorIsBroken(msg.sender);
+        bool minted = i_dsc.mint(msg.sender, _amountDesToMint);
+        if (!minted) {
+            revert DSCEngine_MintFailed();
+        }
     }
 
     function getAccountCollateralValue(address _user) public view returns (uint256 totalCollateralValueInUsd) {

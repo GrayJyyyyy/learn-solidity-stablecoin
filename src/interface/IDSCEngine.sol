@@ -11,6 +11,7 @@ interface IDSCEngine {
     error DSCEngine_NotAllowedToken();
     error DSCEngine_TransferFailed();
     error DSCEngine_HealthFactorTooLow(uint256 _healthFactor);
+    error DSCEngine_MintFailed();
 
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
     // 组合函数:抵押并铸造DSC
