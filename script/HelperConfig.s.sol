@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
 import {Script} from "forge-std/Script.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -18,8 +18,16 @@ contract HelperConfig is Script {
     uint8 public constant DECIMALS = 8;
     int256 public constant INITIAL_ANSWER_FOR_ETH = 2000 * 1e8;
     int256 public constant INITIAL_ANSWER_FOR_BTC = 50000 * 1e8;
+    uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY =
+        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
-    constructor() {}
+    constructor() {
+        if (block.chainid == 11155111) {
+            activeNetworkConfig = getSepoliaEthConfig();
+        } else {
+            activeNetworkConfig = getOrCreateAnvilEthConfig();
+        }
+    }
 
     function getSepoliaEthConfig() public view returns (NetworkConfig memory config) {
         config = NetworkConfig({
@@ -41,5 +49,13 @@ contract HelperConfig is Script {
         ERC20Mock wbtc = new ERC20Mock();
         MockV3Aggregator wbtcUsdPriceFeed = new MockV3Aggregator(DECIMALS, INITIAL_ANSWER_FOR_BTC);
         vm.stopBroadcast();
+        config = NetworkConfig({
+            wethUsdPriceFeed: address(wethUsdPriceFeed),
+            wbtcUsdPriceFeed: address(wbtcUsdPriceFeed),
+            weth: address(weth),
+            wbtc: address(wbtc),
+            // deployerKey: vm.envUint("PRIVATE_KEY")
+            deployerKey: DEFAULT_ANVIL_PRIVATE_KEY
+        });
     }
 }
