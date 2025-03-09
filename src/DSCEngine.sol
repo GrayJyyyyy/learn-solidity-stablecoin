@@ -121,10 +121,8 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
     function depositCollateral(address _tokenCollateralAddress, uint256 _amountCollateral)
         public
         override
-        // Check
         nonReentrant
         validAmount(_amountCollateral)
-        validAddress(_tokenCollateralAddress)
         isAllowedToken(_tokenCollateralAddress)
     {
         // Effect
@@ -241,11 +239,11 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
 
     function getTokenAmountFromUsd(address tokenCollateralAddress, uint256 usdAmountInWei)
         public
-        returns (uint256 usdValue)
+        returns (uint256 tokenAmountFromUsd)
     {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[tokenCollateralAddress]);
         (, int256 price,,,) = priceFeed.latestRoundData();
-        usdValue = (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
+        tokenAmountFromUsd = (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
     }
 
     function liquidate(address tokenCollateralAddress, address user, uint256 debtToCover)
@@ -269,5 +267,22 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
             revert DSCEngine__HealthFactorIsNotImproved();
         }
         _revertIfHealthFactorIsBroken(user);
+    }
+
+    //  getter for test
+    function getAccountInformation(address user)
+        public
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
+    }
+
+    function getPriceFeedAddress(address tokenAddress) public view returns (address priceFeedAddr) {
+        priceFeedAddr = s_priceFeeds[tokenAddress];
+    }
+
+    function getUserDepositedAmount(address user, address token) public view returns (uint256 amount) {
+        amount = s_collateralDeposited[user][token];
     }
 }
