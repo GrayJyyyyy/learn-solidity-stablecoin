@@ -160,29 +160,29 @@ contract DECEngine is Test {
     }
 
     function test_RevertIfTransferFromIsFailed() public {
-        MockFailedTransferFrom _fakerToken = new MockFailedTransferFrom();
-        tokenAddresses = [address(_fakerToken)];
+        MockFailedTransferFrom _tokenForCollateral = new MockFailedTransferFrom();
+        tokenAddresses = [address(_tokenForCollateral)];
         priceFeedAddresses = [wethUsdPriceFeed];
         // 使用dsc作为稳定币
         DSCEngine _mockDSCEngine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
         // 为用户铸造代币
-        _fakerToken.mint(USER, STARTING_ERC20_BALANCE);
+        _tokenForCollateral.mint(USER, STARTING_ERC20_BALANCE);
         // 切换到USER身份执行测试
         vm.startPrank(USER);
-        _fakerToken.approve(address(_mockDSCEngine), AMOUNT_COLLATERAL);
+        _tokenForCollateral.approve(address(_mockDSCEngine), AMOUNT_COLLATERAL);
         vm.expectRevert(IDSCEngine.DSCEngine__TransferFailed.selector);
-        _mockDSCEngine.depositCollateral(address(_fakerToken), AMOUNT_COLLATERAL);
+        _mockDSCEngine.depositCollateral(address(_tokenForCollateral), AMOUNT_COLLATERAL);
         vm.stopPrank();
     }
 
     // Mint test
     function test_RevertIfHealthFactorIsBrokenWhenMint() public depositCollateral {
         (, uint256 collateralValueInUsd) = dsce.getAccountInformation(USER);
-        uint256 maxDscToMint = collateralValueInUsd * 50 / 100;
-        uint256 exceedingAmount = maxDscToMint + 1 ether;
+        uint256 _maxDscToMint = collateralValueInUsd * 50 / 100;
+        uint256 _exceedingAmount = _maxDscToMint + 1 ether;
         vm.startPrank(USER);
         vm.expectPartialRevert(IDSCEngine.DSCEngine__HealthFactorTooLow.selector);
-        dsce.mintDsc(exceedingAmount);
+        dsce.mintDsc(_exceedingAmount);
         vm.stopPrank();
     }
 }
