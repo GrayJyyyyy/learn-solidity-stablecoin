@@ -9,6 +9,7 @@ import {DSCEngine} from "../../src/DSCEngine.sol";
 import {IDSCEngine} from "../../src/interface/IDSCEngine.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockFailedTransferFrom} from "../mock/MockFailedTransferFrom.sol";
 
 contract DECEngine is Test {
     DeployDsc public deployer;
@@ -24,6 +25,8 @@ contract DECEngine is Test {
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
     address[] public tokenAddresses;
     address[] public priceFeedAddresses;
+    uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200%超额抵押
+    uint256 private constant LIQUIDATION_PRECISION = 100;
 
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
 
@@ -72,7 +75,7 @@ contract DECEngine is Test {
         assertEq(_expectedUsd, _usdValue);
     }
 
-    function test_getTokenAmountFromUsd() public {
+    function test_GetTokenAmountFromUsd() public {
         uint256 _usdValue = 2000 ether;
         uint256 _expectedTokenAmountInEth = 1 ether;
         uint256 _tokenAmountFromUsd = dsce.getTokenAmountFromUsd(weth, _usdValue);
@@ -101,16 +104,28 @@ contract DECEngine is Test {
         vm.stopPrank();
     }
 
+    function test_RevertIfAmountInvalid() public {
+        vm.startPrank(USER);
+        uint256 _amountCollateral = 0;
+        vm.expectRevert(IDSCEngine.DSCEngine__InvalidAmount.selector);
+        dsce.depositCollateral(weth, _amountCollateral);
+        vm.stopPrank();
+    }
+
     modifier depositCollateral() {
         vm.startBroadcast(USER);
-        // 在 setUp 中已经给 USER 铸造 weth 了,所以这里不需要再铸造
+        /**
+         * 正常操作流程：
+         *  首先要确保用户有资金，在这里是 weth，所以要先 mint，这一步在 setUp 里已经做了所以这里不需要再 mint
+         *  然后就是调用approve授权 dsce 合约操作用户的代币
+         */
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
         dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
         vm.stopBroadcast();
         _;
     }
 
-    function test_depositCollateralEmitsEvent() public {
+    function test_DepositCollateralEmitsEvent() public {
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
         vm.expectEmit(true, true, true, false, address(dsce));
@@ -119,7 +134,7 @@ contract DECEngine is Test {
         vm.stopPrank();
     }
 
-    function test_depositCollateralUpdatesState() public depositCollateral {
+    function test_DepositCollateralUpdatesState() public depositCollateral {
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInformation(USER);
         uint256 _expectedDscMinted = 0;
         uint256 _expectedCollateralValueInUsd = dsce.getUsdValue(weth, AMOUNT_COLLATERAL); // 计算存入 weth 的美元价值是否正确
@@ -129,7 +144,7 @@ contract DECEngine is Test {
         // assertEq(_expectedDepositAmount, AMOUNT_COLLATERAL);
     }
 
-    function test_multipleDepositsIncreaseTotalCollateral() public {
+    function test_MultipleDepositsIncreaseTotalCollateral() public {
         // 第一次存款
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL * 2);
@@ -142,5 +157,32 @@ contract DECEngine is Test {
         // 验证两次存款累加
         assertEq(totalDepositAmount, firstDepositAmount + AMOUNT_COLLATERAL);
         assertEq(totalDepositAmount, AMOUNT_COLLATERAL * 2);
+    }
+
+    function test_RevertIfTransferFromIsFailed() public {
+        MockFailedTransferFrom _fakerToken = new MockFailedTransferFrom();
+        tokenAddresses = [address(_fakerToken)];
+        priceFeedAddresses = [wethUsdPriceFeed];
+        // 使用dsc作为稳定币
+        DSCEngine _mockDSCEngine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
+        // 为用户铸造代币
+        _fakerToken.mint(USER, STARTING_ERC20_BALANCE);
+        // 切换到USER身份执行测试
+        vm.startPrank(USER);
+        _fakerToken.approve(address(_mockDSCEngine), AMOUNT_COLLATERAL);
+        vm.expectRevert(IDSCEngine.DSCEngine__TransferFailed.selector);
+        _mockDSCEngine.depositCollateral(address(_fakerToken), AMOUNT_COLLATERAL);
+        vm.stopPrank();
+    }
+
+    // Mint test
+    function test_RevertIfHealthFactorIsBrokenWhenMint() public depositCollateral {
+        (, uint256 collateralValueInUsd) = dsce.getAccountInformation(USER);
+        uint256 maxDscToMint = collateralValueInUsd * 50 / 100;
+        uint256 exceedingAmount = maxDscToMint + 1 ether;
+        vm.startPrank(USER);
+        vm.expectPartialRevert(IDSCEngine.DSCEngine__HealthFactorTooLow.selector);
+        dsce.mintDsc(exceedingAmount);
+        vm.stopPrank();
     }
 }
