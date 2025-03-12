@@ -10,6 +10,7 @@ import {IDSCEngine} from "../../src/interface/IDSCEngine.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MockFailedTransferFrom} from "../mock/MockFailedTransferFrom.sol";
+import {MockFailedMintDSC} from "../mock/MockFailedMintDSC.sol";
 
 contract DECEngine is Test {
     DeployDsc public deployer;
@@ -83,6 +84,19 @@ contract DECEngine is Test {
     }
 
     // Deposit Test
+
+    function test_RevertIfMintIsFailed() public {
+        tokenAddresses = [weth];
+        priceFeedAddresses = [wethUsdPriceFeed];
+        MockFailedMintDSC _dsc = new MockFailedMintDSC();
+        DSCEngine _mockDSCEngine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(_dsc));
+        _dsc.transferOwnership(address(_mockDSCEngine));
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(_mockDSCEngine), AMOUNT_COLLATERAL);
+        vm.expectRevert(IDSCEngine.DSCEngine__MintFailed.selector);
+        _mockDSCEngine.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL, AMOUNT_COLLATERAL);
+        vm.stopPrank();
+    }
 
     function test_RevertIfCollateralIsZero() public {
         vm.startPrank(USER);
