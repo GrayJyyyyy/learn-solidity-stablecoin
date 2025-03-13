@@ -193,6 +193,7 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
 
     function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral)
         public
+        isAllowedToken(tokenCollateralAddress)
         validAmount(amountCollateral)
         nonReentrant
     {
@@ -239,6 +240,7 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
 
     function getTokenAmountFromUsd(address tokenCollateralAddress, uint256 usdAmountInWei)
         public
+        view
         returns (uint256 tokenAmountFromUsd)
     {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[tokenCollateralAddress]);
@@ -249,7 +251,7 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
     function liquidate(address tokenCollateralAddress, address user, uint256 debtToCover)
         public
         validAmount(debtToCover)
-        validAddress(tokenCollateralAddress)
+        isAllowedToken(tokenCollateralAddress)
         validAddress(user)
         nonReentrant
     {

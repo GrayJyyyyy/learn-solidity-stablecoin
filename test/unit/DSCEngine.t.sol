@@ -22,6 +22,7 @@ contract DECEngine is Test {
     address public weth;
     address public wbtc;
     address public immutable USER = makeAddr("User");
+    address public immutable LIQUIDATOR = makeAddr("Liquidator");
     uint256 public constant AMOUNT_COLLATERAL = 1 ether;
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
     address[] public tokenAddresses;
@@ -30,12 +31,16 @@ contract DECEngine is Test {
     uint256 private constant LIQUIDATION_PRECISION = 100;
 
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
+    event CollateralRedeemed(
+        address indexed redeemFrom, address indexed redeemTo, address indexed token, uint256 amount
+    );
 
     function setUp() external {
         deployer = new DeployDsc();
         (dsc, dsce, helperConfig) = deployer.run();
         (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc,) = helperConfig.activeNetworkConfig();
         ERC20Mock(weth).mint(USER, STARTING_ERC20_BALANCE);
+        ERC20Mock(weth).mint(LIQUIDATOR, 10 * STARTING_ERC20_BALANCE);
     }
     // Constructor Test
 
@@ -66,7 +71,41 @@ contract DECEngine is Test {
         assertEq(wbtcUsdPriceFeed, _DSCEngine.getPriceFeedAddress(wbtc));
     }
 
+    // modifier
+    modifier depositCollateral() {
+        vm.startBroadcast(USER);
+        /**
+         * 正常操作流程：
+         *  首先要确保用户有资金，在这里是 weth，所以要先 mint，这一步在 setUp 里已经做了所以这里不需要再 mint
+         *  然后就是调用approve授权 dsce 合约操作用户的代币
+         */
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        vm.stopBroadcast();
+        _;
+    }
+
+    modifier depositCollateralAndMintDsc() {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        // 计算可以安全铸造的 DSC 数量
+        // 假设我们想保持健康因子在安全水平，这里使用 AMOUNT_COLLATERAL价值的四分之一 500DSC
+        uint256 collateralValueInUsd = dsce.getUsdValue(weth, AMOUNT_COLLATERAL);
+        // 铸造抵押品价值的 1/4 (为保持安全性)
+        // 健康因子 = (2000 * 50/100) * 1e18 / 500 = 1000 * 1e18 / 500 = 2e18 = 2.0
+        uint256 dscToMint = collateralValueInUsd / 4;
+        dsce.mintDsc(dscToMint);
+        vm.stopPrank();
+        _;
+    }
     //  Price Test
+
+    function test_GetAccountCollateralValue() public depositCollateral {
+        uint256 _totalCollateralValueInUsd = dsce.getAccountCollateralValue(USER);
+        uint256 _calculatedUsdValue = dsce.getUsdValue(weth, AMOUNT_COLLATERAL);
+        assertEq(_totalCollateralValueInUsd, _calculatedUsdValue);
+    }
 
     function test_GetUsdValue() public {
         uint256 _ethAmount = 1 ether;
@@ -124,19 +163,6 @@ contract DECEngine is Test {
         vm.expectRevert(IDSCEngine.DSCEngine__InvalidAmount.selector);
         dsce.depositCollateral(weth, _amountCollateral);
         vm.stopPrank();
-    }
-
-    modifier depositCollateral() {
-        vm.startBroadcast(USER);
-        /**
-         * 正常操作流程：
-         *  首先要确保用户有资金，在这里是 weth，所以要先 mint，这一步在 setUp 里已经做了所以这里不需要再 mint
-         *  然后就是调用approve授权 dsce 合约操作用户的代币
-         */
-        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
-        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
-        vm.stopBroadcast();
-        _;
     }
 
     function test_DepositCollateralEmitsEvent() public {
@@ -198,5 +224,30 @@ contract DECEngine is Test {
         vm.expectPartialRevert(IDSCEngine.DSCEngine__HealthFactorTooLow.selector);
         dsce.mintDsc(_exceedingAmount);
         vm.stopPrank();
+    }
+
+    // Redeem test
+    function test_RevertIfRedeemAmountIsZero() public depositCollateral {
+        uint256 _invalidAmount = 0;
+        vm.startPrank(USER);
+        vm.expectRevert(IDSCEngine.DSCEngine__InvalidAmount.selector);
+        dsce.redeemCollateral(weth, _invalidAmount);
+    }
+
+    function test_RedeemCollateralUpdatesState() public depositCollateralAndMintDsc {
+        // 价值相当于 20 美元的抵押物
+        uint256 _amountToRedeem = dsce.getTokenAmountFromUsd(weth, 20 ether);
+        vm.startPrank(USER);
+        dsce.redeemCollateral(weth, _amountToRedeem);
+        uint256 _collateralDeposited = AMOUNT_COLLATERAL - _amountToRedeem;
+        assertEq(_collateralDeposited, dsce.getUserDepositedAmount(USER, weth));
+    }
+
+    function test_RedeemCollateralEmitEvents() public depositCollateralAndMintDsc {
+        uint256 _amountToRedeem = dsce.getTokenAmountFromUsd(weth, 20 ether);
+        vm.startPrank(USER);
+        vm.expectEmit(true, true, true, true);
+        emit CollateralRedeemed(USER, USER, weth, _amountToRedeem);
+        dsce.redeemCollateral(weth, _amountToRedeem);
     }
 }
