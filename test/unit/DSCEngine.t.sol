@@ -11,6 +11,7 @@ import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MockFailedTransferFrom} from "../mock/MockFailedTransferFrom.sol";
 import {MockFailedMintDSC} from "../mock/MockFailedMintDSC.sol";
+import {MockFailedTransfer} from "../mock/MockFailedTransfer.sol";
 
 contract DECEngine is Test {
     DeployDsc public deployer;
@@ -23,6 +24,7 @@ contract DECEngine is Test {
     address public wbtc;
     address public immutable USER = makeAddr("User");
     address public immutable LIQUIDATOR = makeAddr("Liquidator");
+    uint256 public dscToMint;
     uint256 public constant AMOUNT_COLLATERAL = 1 ether;
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
     address[] public tokenAddresses;
@@ -91,10 +93,10 @@ contract DECEngine is Test {
         dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
         // 计算可以安全铸造的 DSC 数量
         // 假设我们想保持健康因子在安全水平，这里使用 AMOUNT_COLLATERAL价值的四分之一 500DSC
-        uint256 collateralValueInUsd = dsce.getUsdValue(weth, AMOUNT_COLLATERAL);
+        uint256 _collateralValueInUsd = dsce.getUsdValue(weth, AMOUNT_COLLATERAL);
         // 铸造抵押品价值的 1/4 (为保持安全性)
         // 健康因子 = (2000 * 50/100) * 1e18 / 500 = 1000 * 1e18 / 500 = 2e18 = 2.0
-        uint256 dscToMint = collateralValueInUsd / 4;
+        dscToMint = _collateralValueInUsd / 4;
         dsce.mintDsc(dscToMint);
         vm.stopPrank();
         _;
@@ -199,7 +201,7 @@ contract DECEngine is Test {
         assertEq(totalDepositAmount, AMOUNT_COLLATERAL * 2);
     }
 
-    function test_RevertIfTransferFromIsFailed() public {
+    function test_RevertIfDepositCollateralTransferFromIsFailed() public {
         MockFailedTransferFrom _tokenForCollateral = new MockFailedTransferFrom();
         tokenAddresses = [address(_tokenForCollateral)];
         priceFeedAddresses = [wethUsdPriceFeed];
@@ -227,11 +229,27 @@ contract DECEngine is Test {
     }
 
     // Redeem test
+
+    function test_RevertIfRedeemCollateralTransferFailed() public {
+        MockFailedTransfer _fakerToken = new MockFailedTransfer();
+        tokenAddresses = [address(_fakerToken)];
+        priceFeedAddresses = [wethUsdPriceFeed];
+        DSCEngine _dsce = new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
+        _fakerToken.mint(USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        _fakerToken.approve(address(_dsce), AMOUNT_COLLATERAL);
+        _dsce.depositCollateral(address(_fakerToken), AMOUNT_COLLATERAL);
+        vm.expectRevert(IDSCEngine.DSCEngine__TransferFailed.selector);
+        _dsce.redeemCollateral(address(_fakerToken), AMOUNT_COLLATERAL);
+        vm.stopPrank();
+    }
+
     function test_RevertIfRedeemAmountIsZero() public depositCollateral {
         uint256 _invalidAmount = 0;
         vm.startPrank(USER);
         vm.expectRevert(IDSCEngine.DSCEngine__InvalidAmount.selector);
         dsce.redeemCollateral(weth, _invalidAmount);
+        vm.stopPrank();
     }
 
     function test_RedeemCollateralUpdatesState() public depositCollateralAndMintDsc {
@@ -241,6 +259,7 @@ contract DECEngine is Test {
         dsce.redeemCollateral(weth, _amountToRedeem);
         uint256 _collateralDeposited = AMOUNT_COLLATERAL - _amountToRedeem;
         assertEq(_collateralDeposited, dsce.getUserDepositedAmount(USER, weth));
+        vm.stopPrank();
     }
 
     function test_RedeemCollateralEmitEvents() public depositCollateralAndMintDsc {
@@ -249,5 +268,43 @@ contract DECEngine is Test {
         vm.expectEmit(true, true, true, true);
         emit CollateralRedeemed(USER, USER, weth, _amountToRedeem);
         dsce.redeemCollateral(weth, _amountToRedeem);
+        vm.stopPrank();
+    }
+
+    // Burn Test
+    function test_RevertIfBurnAmountIsZero() public depositCollateralAndMintDsc {
+        uint256 _invalidAmount = 0;
+        vm.startPrank(USER);
+        vm.expectRevert(IDSCEngine.DSCEngine__InvalidAmount.selector);
+        dsce.burnDsc(_invalidAmount);
+        vm.stopPrank();
+    }
+
+    function test_BurnDscUpdatesState() public depositCollateralAndMintDsc {
+        uint256 _collateralValueInUsd = dsce.getUsdValue(weth, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        dsc.approve(address(dsce), dscToMint);
+        dsce.burnDsc(dscToMint);
+        (uint256 totalDscMinted,) = dsce.getAccountInformation(USER);
+        vm.stopPrank();
+        assertEq(totalDscMinted, 0);
+    }
+
+    function test_RevertIfBurnDscTransferFromFailed() public {
+        MockFailedTransferFrom _dsc = new MockFailedTransferFrom();
+        tokenAddresses = [weth];
+        priceFeedAddresses = [wethUsdPriceFeed];
+        DSCEngine _dsce = new DSCEngine(tokenAddresses, priceFeedAddresses, address(_dsc));
+        _dsc.transferOwnership(address(_dsce));
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(_dsce), AMOUNT_COLLATERAL);
+        _dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        uint256 _collateralValueInUsd = _dsce.getUsdValue(weth, AMOUNT_COLLATERAL);
+        uint256 _dscToMint = _collateralValueInUsd / 4;
+        _dsce.mintDsc(_dscToMint);
+        _dsc.approve(address(_dsce), _dscToMint);
+        vm.expectRevert(IDSCEngine.DSCEngine__TransferFailed.selector);
+        _dsce.burnDsc(_dscToMint);
+        vm.stopPrank();
     }
 }
