@@ -24,7 +24,7 @@ contract DECEngine is Test {
     address public wbtc;
     address public immutable USER = makeAddr("User");
     address public immutable LIQUIDATOR = makeAddr("Liquidator");
-    uint256 public dscToMint;
+    uint256 public dscToMint = 100 ether;
     uint256 public constant AMOUNT_COLLATERAL = 1 ether;
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
     address[] public tokenAddresses;
@@ -229,7 +229,6 @@ contract DECEngine is Test {
     }
 
     // Redeem test
-
     function test_RevertIfRedeemCollateralTransferFailed() public {
         MockFailedTransfer _fakerToken = new MockFailedTransfer();
         tokenAddresses = [address(_fakerToken)];
@@ -268,6 +267,15 @@ contract DECEngine is Test {
         vm.expectEmit(true, true, true, true);
         emit CollateralRedeemed(USER, USER, weth, _amountToRedeem);
         dsce.redeemCollateral(weth, _amountToRedeem);
+        vm.stopPrank();
+    }
+
+    function test_RedeemCollateralForDscCanBurnAndRedeem() public depositCollateralAndMintDsc {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL, 100 ether);
+        dsc.approve(address(dsce), 100 ether);
+        dsce.redeemCollateralForDsc(weth, AMOUNT_COLLATERAL, 100 ether);
         vm.stopPrank();
     }
 
